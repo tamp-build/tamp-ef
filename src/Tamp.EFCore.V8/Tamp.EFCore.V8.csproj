@@ -8,7 +8,6 @@
 
   <PropertyGroup Label="Package">
     <PackageId>Tamp.EFCore.V8</PackageId>
-    <Version>0.0.1-alpha</Version>
     <Description>Tamp wrapper for the dotnet-ef CLI (EF Core 8.x). Full surface across migrations / database / dbcontext verbs, including cross-project flags (--project, --startup-project, --framework, --configuration, --runtime, --no-build).</Description>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
