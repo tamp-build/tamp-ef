@@ -21,6 +21,7 @@
     <!-- Pin updated whenever a Tamp.Core release is cut. -->
     <PackageVersion Include="Tamp.Core" Version="1.0.0" />
     <PackageVersion Include="Tamp.NetCli.V10" Version="1.0.0" />
+    <PackageVersion Include="Tamp.SonarScanner.V10" Version="0.1.0" />
   </ItemGroup>
 
   <ItemGroup Label="EF Core sample apps (drives the integration tests)">
