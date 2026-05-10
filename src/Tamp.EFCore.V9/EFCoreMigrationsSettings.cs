@@ -18,10 +18,14 @@ public sealed class EFCoreMigrationsAddSettings : EFCoreSettingsBase
     /// <summary>The DbContext class name when there's more than one. Maps to <c>--context</c>.</summary>
     public string? Context { get; set; }
 
+    /// <summary>Emit machine-readable JSON output. Maps to <c>--json</c>.</summary>
+    public bool Json { get; set; }
+
     public EFCoreMigrationsAddSettings SetName(string? name) { Name = name; return this; }
     public EFCoreMigrationsAddSettings SetOutputDir(string? dir) { OutputDir = dir; return this; }
     public EFCoreMigrationsAddSettings SetNamespace(string? ns) { Namespace = ns; return this; }
     public EFCoreMigrationsAddSettings SetContext(string? context) { Context = context; return this; }
+    public EFCoreMigrationsAddSettings SetJson(bool v = true) { Json = v; return this; }
 
     protected override IEnumerable<string> BuildVerbArguments()
     {
@@ -33,6 +37,7 @@ public sealed class EFCoreMigrationsAddSettings : EFCoreSettingsBase
         if (!string.IsNullOrEmpty(OutputDir)) { yield return "--output-dir"; yield return OutputDir!; }
         if (!string.IsNullOrEmpty(Namespace)) { yield return "--namespace"; yield return Namespace!; }
         if (!string.IsNullOrEmpty(Context)) { yield return "--context"; yield return Context!; }
+        if (Json) yield return "--json";
     }
 }
 
@@ -49,8 +54,12 @@ public sealed class EFCoreMigrationsRemoveSettings : EFCoreSettingsBase
     /// <summary>The DbContext class name when there's more than one. Maps to <c>--context</c>.</summary>
     public string? Context { get; set; }
 
+    /// <summary>Emit machine-readable JSON output. Maps to <c>--json</c>.</summary>
+    public bool Json { get; set; }
+
     public EFCoreMigrationsRemoveSettings SetForce(bool v = true) { Force = v; return this; }
     public EFCoreMigrationsRemoveSettings SetContext(string? context) { Context = context; return this; }
+    public EFCoreMigrationsRemoveSettings SetJson(bool v = true) { Json = v; return this; }
 
     protected override IEnumerable<string> BuildVerbArguments()
     {
@@ -58,6 +67,7 @@ public sealed class EFCoreMigrationsRemoveSettings : EFCoreSettingsBase
         yield return "remove";
         if (Force) yield return "--force";
         if (!string.IsNullOrEmpty(Context)) { yield return "--context"; yield return Context!; }
+        if (Json) yield return "--json";
     }
 }
 
@@ -77,9 +87,13 @@ public sealed class EFCoreMigrationsListSettings : EFCoreSettingsBase
     /// <summary>The DbContext class name when there's more than one. Maps to <c>--context</c>.</summary>
     public string? Context { get; set; }
 
+    /// <summary>Emit machine-readable JSON output. Maps to <c>--json</c>.</summary>
+    public bool Json { get; set; }
+
     public EFCoreMigrationsListSettings SetConnection(Secret connection) { Connection = connection; return this; }
     public EFCoreMigrationsListSettings SetNoConnect(bool v = true) { NoConnect = v; return this; }
     public EFCoreMigrationsListSettings SetContext(string? context) { Context = context; return this; }
+    public EFCoreMigrationsListSettings SetJson(bool v = true) { Json = v; return this; }
 
     protected override IEnumerable<string> BuildVerbArguments()
     {
@@ -88,6 +102,7 @@ public sealed class EFCoreMigrationsListSettings : EFCoreSettingsBase
         if (Connection is { } c) { yield return "--connection"; yield return c.Reveal(); }
         if (NoConnect) yield return "--no-connect";
         if (!string.IsNullOrEmpty(Context)) { yield return "--context"; yield return Context!; }
+        if (Json) yield return "--json";
     }
 
     protected override IReadOnlyList<Secret> BuildSecrets()

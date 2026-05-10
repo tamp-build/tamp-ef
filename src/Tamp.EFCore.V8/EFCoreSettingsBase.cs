@@ -55,11 +55,8 @@ public abstract class EFCoreSettingsBase
     /// <summary>Skip the build step before running the verb. Maps to <c>--no-build</c>.</summary>
     public bool NoBuild { get; set; }
 
-    /// <summary>Override the MSBuild <c>obj/</c> directory. Maps to <c>--msbuildprojectextensionspath</c>.</summary>
+    /// <summary>Override the MSBuild <c>obj/</c> directory. Maps to <c>--msbuildprojectextensionspath</c> (marked Obsolete by EF, but still accepted).</summary>
     public string? MsBuildProjectExtensionsPath { get; set; }
-
-    /// <summary>Working directory the CLI uses to resolve relative paths. Maps to <c>--working-dir</c>.</summary>
-    public string? WorkingDir { get; set; }
 
     /// <summary>Verbose output. Maps to <c>--verbose</c>.</summary>
     public EFCoreVerbosity Verbosity { get; set; }
@@ -70,10 +67,7 @@ public abstract class EFCoreSettingsBase
     /// <summary>Prefix output lines with the stream they came from. Maps to <c>--prefix-output</c>.</summary>
     public bool PrefixOutput { get; set; }
 
-    /// <summary>Emit machine-readable JSON output. Maps to <c>--json</c>. Honored by verbs that support it (e.g. <c>migrations list</c>, <c>dbcontext list</c>, <c>dbcontext info</c>).</summary>
-    public bool Json { get; set; }
-
-    /// <summary>Working directory of the spawned <c>dotnet</c> process (distinct from EF's <c>--working-dir</c>).</summary>
+    /// <summary>Working directory of the spawned <c>dotnet</c> process. (EF's CLI has no <c>--working-dir</c> flag — set the OS process's CWD instead.)</summary>
     public string? ProcessWorkingDirectory { get; set; }
 
     /// <summary>Per-invocation environment variables on top of the inherited environment.</summary>
@@ -108,11 +102,9 @@ public abstract class EFCoreSettingsBase
         if (!string.IsNullOrEmpty(Runtime)) { args.Add("--runtime"); args.Add(Runtime!); }
         if (NoBuild) args.Add("--no-build");
         if (!string.IsNullOrEmpty(MsBuildProjectExtensionsPath)) { args.Add("--msbuildprojectextensionspath"); args.Add(MsBuildProjectExtensionsPath!); }
-        if (!string.IsNullOrEmpty(WorkingDir)) { args.Add("--working-dir"); args.Add(WorkingDir!); }
         if (Verbosity == EFCoreVerbosity.Verbose) args.Add("--verbose");
         if (NoColor) args.Add("--no-color");
         if (PrefixOutput) args.Add("--prefix-output");
-        if (Json) args.Add("--json");
     }
 }
 
@@ -130,11 +122,9 @@ public static class EFCoreSettingsBaseExtensions
     public static T SetRuntime<T>(this T s, string? runtime) where T : EFCoreSettingsBase { s.Runtime = runtime; return s; }
     public static T SetNoBuild<T>(this T s, bool v = true) where T : EFCoreSettingsBase { s.NoBuild = v; return s; }
     public static T SetMsBuildProjectExtensionsPath<T>(this T s, string? path) where T : EFCoreSettingsBase { s.MsBuildProjectExtensionsPath = path; return s; }
-    public static T SetWorkingDir<T>(this T s, string? path) where T : EFCoreSettingsBase { s.WorkingDir = path; return s; }
     public static T SetVerbose<T>(this T s, bool v = true) where T : EFCoreSettingsBase { s.Verbosity = v ? EFCoreVerbosity.Verbose : EFCoreVerbosity.Default; return s; }
     public static T SetNoColor<T>(this T s, bool v = true) where T : EFCoreSettingsBase { s.NoColor = v; return s; }
     public static T SetPrefixOutput<T>(this T s, bool v = true) where T : EFCoreSettingsBase { s.PrefixOutput = v; return s; }
-    public static T SetJson<T>(this T s, bool v = true) where T : EFCoreSettingsBase { s.Json = v; return s; }
     public static T SetProcessWorkingDirectory<T>(this T s, string? path) where T : EFCoreSettingsBase { s.ProcessWorkingDirectory = path; return s; }
     public static T SetEnvironmentVariable<T>(this T s, string name, string value) where T : EFCoreSettingsBase { s.EnvironmentVariables[name] = value; return s; }
 }

@@ -11,7 +11,7 @@ namespace Tamp.EFCore.V8;
 /// distributed as the <c>dotnet-ef</c> .NET tool:
 /// </para>
 /// <code>
-/// [NuGetPackage("dotnet-ef", Version = "8.0.x")]
+/// [NuGetPackage("dotnet-ef", Version = "10.0.1")]
 /// readonly Tool Ef;
 /// </code>
 /// <para>

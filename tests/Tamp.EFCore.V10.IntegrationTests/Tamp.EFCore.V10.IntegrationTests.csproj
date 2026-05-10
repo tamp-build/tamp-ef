@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Integration tests are net10-only — they spawn dotnet-ef 10.x
+      against an EF Core 10 sample app. The unit tests above multi-
+      target net8/9/10; this project does not.
+    -->
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Tamp.EFCore.V10.IntegrationTests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Tamp.EFCore.V10\Tamp.EFCore.V10.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -9,13 +9,18 @@ public sealed class EFCoreDbContextInfoSettings : EFCoreSettingsBase
     /// <summary>The DbContext class name when there's more than one. Maps to <c>--context</c>.</summary>
     public string? Context { get; set; }
 
+    /// <summary>Emit machine-readable JSON output. Maps to <c>--json</c>.</summary>
+    public bool Json { get; set; }
+
     public EFCoreDbContextInfoSettings SetContext(string? context) { Context = context; return this; }
+    public EFCoreDbContextInfoSettings SetJson(bool v = true) { Json = v; return this; }
 
     protected override IEnumerable<string> BuildVerbArguments()
     {
         yield return "dbcontext";
         yield return "info";
         if (!string.IsNullOrEmpty(Context)) { yield return "--context"; yield return Context!; }
+        if (Json) yield return "--json";
     }
 }
 
@@ -25,10 +30,16 @@ public sealed class EFCoreDbContextInfoSettings : EFCoreSettingsBase
 /// </summary>
 public sealed class EFCoreDbContextListSettings : EFCoreSettingsBase
 {
+    /// <summary>Emit machine-readable JSON output. Maps to <c>--json</c>.</summary>
+    public bool Json { get; set; }
+
+    public EFCoreDbContextListSettings SetJson(bool v = true) { Json = v; return this; }
+
     protected override IEnumerable<string> BuildVerbArguments()
     {
         yield return "dbcontext";
         yield return "list";
+        if (Json) yield return "--json";
     }
 }
 
@@ -51,6 +62,9 @@ public sealed class EFCoreDbContextOptimizeSettings : EFCoreSettingsBase
     /// <summary>Suffix appended to generated file names. Maps to <c>--suffix</c>.</summary>
     public string? Suffix { get; set; }
 
+    /// <summary>Skip generating the compiled model — useful when you want only precompiled queries. Maps to <c>--no-scaffold</c>.</summary>
+    public bool NoScaffold { get; set; }
+
     /// <summary>Generate precompiled queries alongside the compiled model. Maps to <c>--precompile-queries</c> (EF Core 9+).</summary>
     public bool PrecompileQueries { get; set; }
 
@@ -61,6 +75,7 @@ public sealed class EFCoreDbContextOptimizeSettings : EFCoreSettingsBase
     public EFCoreDbContextOptimizeSettings SetNamespace(string? ns) { Namespace = ns; return this; }
     public EFCoreDbContextOptimizeSettings SetContext(string? context) { Context = context; return this; }
     public EFCoreDbContextOptimizeSettings SetSuffix(string? suffix) { Suffix = suffix; return this; }
+    public EFCoreDbContextOptimizeSettings SetNoScaffold(bool v = true) { NoScaffold = v; return this; }
     public EFCoreDbContextOptimizeSettings SetPrecompileQueries(bool v = true) { PrecompileQueries = v; return this; }
     public EFCoreDbContextOptimizeSettings SetNativeAot(bool v = true) { NativeAot = v; return this; }
 
@@ -72,6 +87,7 @@ public sealed class EFCoreDbContextOptimizeSettings : EFCoreSettingsBase
         if (!string.IsNullOrEmpty(Namespace)) { yield return "--namespace"; yield return Namespace!; }
         if (!string.IsNullOrEmpty(Context)) { yield return "--context"; yield return Context!; }
         if (!string.IsNullOrEmpty(Suffix)) { yield return "--suffix"; yield return Suffix!; }
+        if (NoScaffold) yield return "--no-scaffold";
         if (PrecompileQueries) yield return "--precompile-queries";
         if (NativeAot) yield return "--nativeaot";
     }
@@ -150,6 +166,9 @@ public sealed class EFCoreDbContextScaffoldSettings : EFCoreSettingsBase
     /// <summary>Tables to include. Repeated as <c>--table &lt;name&gt;</c>. Supports schema-qualified names (e.g. <c>dbo.Users</c>).</summary>
     public List<string> Tables { get; } = [];
 
+    /// <summary>Emit machine-readable JSON output. Maps to <c>--json</c>.</summary>
+    public bool Json { get; set; }
+
     public EFCoreDbContextScaffoldSettings SetConnection(Secret connection) { Connection = connection; return this; }
     public EFCoreDbContextScaffoldSettings SetProvider(string? provider) { Provider = provider; return this; }
     public EFCoreDbContextScaffoldSettings SetDataAnnotations(bool v = true) { DataAnnotations = v; return this; }
@@ -164,6 +183,7 @@ public sealed class EFCoreDbContextScaffoldSettings : EFCoreSettingsBase
     public EFCoreDbContextScaffoldSettings SetUseDatabaseNames(bool v = true) { UseDatabaseNames = v; return this; }
     public EFCoreDbContextScaffoldSettings AddSchema(string schema) { Schemas.Add(schema); return this; }
     public EFCoreDbContextScaffoldSettings AddTable(string table) { Tables.Add(table); return this; }
+    public EFCoreDbContextScaffoldSettings SetJson(bool v = true) { Json = v; return this; }
 
     protected override IEnumerable<string> BuildVerbArguments()
     {
@@ -187,6 +207,7 @@ public sealed class EFCoreDbContextScaffoldSettings : EFCoreSettingsBase
         if (UseDatabaseNames) yield return "--use-database-names";
         foreach (var s in Schemas) { yield return "--schema"; yield return s; }
         foreach (var t in Tables) { yield return "--table"; yield return t; }
+        if (Json) yield return "--json";
     }
 
     protected override IReadOnlyList<Secret> BuildSecrets()

@@ -22,4 +22,10 @@
     <PackageVersion Include="Tamp.Core" Version="0.0.1-alpha" />
   </ItemGroup>
 
+  <ItemGroup Label="EF Core sample apps (drives the integration tests)">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.7" />
+  </ItemGroup>
+
 </Project>

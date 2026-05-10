@@ -138,10 +138,18 @@ public sealed class EFCoreTests
     }
 
     [Fact]
-    public void DatabaseUpdate_DryRun_Emits_Flag()
+    public void DatabaseUpdate_Has_No_DryRun_Setter()
     {
-        var args = EFCore.DatabaseUpdate(FakeTool(), s => s.SetDryRun()).Arguments;
-        Assert.Contains("--dry-run", args);
+        // Surface-policing: integration tests against EF 10.0.7 confirmed
+        // that `database update` does NOT accept --dry-run (only
+        // `database drop` does). The wrapper must not expose a setter
+        // for a flag the CLI rejects.
+        var setters = typeof(EFCoreDatabaseUpdateSettings)
+            .GetMethods()
+            .Where(m => m.Name.StartsWith("Set"))
+            .Select(m => m.Name)
+            .ToHashSet();
+        Assert.DoesNotContain("SetDryRun", setters);
     }
 
     [Fact]
@@ -163,18 +171,30 @@ public sealed class EFCoreTests
     // ================================================================
 
     [Fact]
-    public void DatabaseDrop_Force_DryRun_Connection_All_Round_Trip()
+    public void DatabaseDrop_Force_DryRun_Context_Round_Trip()
     {
-        var conn = new Secret("Conn", "abc");
-        var plan = EFCore.DatabaseDrop(FakeTool(), s => s.SetForce().SetDryRun().SetConnection(conn).SetContext("Ctx"));
+        var plan = EFCore.DatabaseDrop(FakeTool(), s => s.SetForce().SetDryRun().SetContext("Ctx"));
         var args = plan.Arguments;
         Assert.Equal("database", args[0]);
         Assert.Equal("drop", args[1]);
         Assert.Contains("--force", args);
         Assert.Contains("--dry-run", args);
-        Assert.Equal("abc", args[IndexOf(args, "--connection") + 1]);
         Assert.Equal("Ctx", args[IndexOf(args, "--context") + 1]);
-        Assert.Same(conn, Assert.Single(plan.Secrets));
+        Assert.Empty(plan.Secrets);
+    }
+
+    [Fact]
+    public void DatabaseDrop_Has_No_Connection_Setter()
+    {
+        // Surface-policing: EF 10.0.7's `database drop` does NOT accept
+        // --connection. The connection comes from OnConfiguring /
+        // AddDbContext registration on the startup project.
+        var setters = typeof(EFCoreDatabaseDropSettings)
+            .GetMethods()
+            .Where(m => m.Name.StartsWith("Set"))
+            .Select(m => m.Name)
+            .ToHashSet();
+        Assert.DoesNotContain("SetConnection", setters);
     }
 
     // ================================================================
@@ -201,7 +221,7 @@ public sealed class EFCoreTests
     {
         // V8 does NOT support --precompile-queries / --nativeaot —
         // those were added in EF Core 9. Use Tamp.EFCore.V9 or V10 if
-        // those flags are needed.
+        // you need them.
         var args = EFCore.DbContextOptimize(FakeTool(), s => s
             .SetOutputDir("Generated")
             .SetNamespace("MyApp.Compiled")
@@ -219,8 +239,6 @@ public sealed class EFCoreTests
     [Fact]
     public void V8_DbContextOptimize_Has_No_PrecompileQueries_Or_NativeAot_Setters()
     {
-        // Surface-policing test: confirms V8 does NOT carry the EF 9+
-        // setters even after future sed-merges across V8/V9/V10 source.
         var setters = typeof(EFCoreDbContextOptimizeSettings)
             .GetMethods()
             .Where(m => m.Name.StartsWith("Set"))
@@ -530,21 +548,22 @@ public sealed class EFCoreTests
     }
 
     [Fact]
-    public void Common_WorkingDir_Distinct_From_Process_WorkingDirectory()
+    public void Common_ProcessWorkingDirectory_Sets_The_Spawned_Process_Cwd()
     {
-        // --working-dir is EF's own knob (where the CLI resolves relative
-        // paths). ProcessWorkingDirectory is the OS process's CWD. Both
-        // exist independently and must round-trip independently.
+        // EF's CLI has no --working-dir flag (despite what the tooling
+        // docs occasionally imply). The OS process working directory is
+        // the only knob — set it via SetProcessWorkingDirectory.
         var plan = EFCore.MigrationsList(FakeTool(), s => s
-            .SetWorkingDir("/ef/wd")
             .SetProcessWorkingDirectory("/process/cwd"));
-        Assert.Equal("/ef/wd", plan.Arguments[IndexOf(plan.Arguments, "--working-dir") + 1]);
         Assert.Equal("/process/cwd", plan.WorkingDirectory);
+        Assert.DoesNotContain("--working-dir", plan.Arguments);
     }
 
     [Fact]
-    public void Common_Verbose_NoColor_PrefixOutput_Json_Round_Trip()
+    public void Common_Verbose_NoColor_PrefixOutput_Round_Trip()
     {
+        // --json is per-verb (some verbs reject it). DbContextList
+        // happens to support it, so it round-trips here.
         var args = EFCore.DbContextList(FakeTool(), s => s
             .SetVerbose()
             .SetNoColor()
@@ -554,6 +573,71 @@ public sealed class EFCoreTests
         Assert.Contains("--no-color", args);
         Assert.Contains("--prefix-output", args);
         Assert.Contains("--json", args);
+    }
+
+    [Fact]
+    public void Json_Is_Per_Verb_Not_On_Common_Base()
+    {
+        // Surface-policing: --json is only accepted on a subset of EF
+        // verbs. The base class must NOT carry it; otherwise verbs that
+        // reject --json would silently emit a flag the CLI errors on.
+        var setters = typeof(EFCoreSettingsBase)
+            .GetMethods()
+            .Where(m => m.Name.StartsWith("Set"))
+            .Select(m => m.Name)
+            .ToHashSet();
+        Assert.DoesNotContain("SetJson", setters);
+    }
+
+    [Fact]
+    public void Verbs_Without_Json_Have_No_SetJson()
+    {
+        // EF 10 does NOT accept --json on these verbs. The wrapper
+        // mirrors the real CLI surface.
+        var withoutJson = new[]
+        {
+            typeof(EFCoreDatabaseUpdateSettings),
+            typeof(EFCoreDatabaseDropSettings),
+            typeof(EFCoreMigrationsScriptSettings),
+            typeof(EFCoreMigrationsBundleSettings),
+            typeof(EFCoreMigrationsHasPendingModelChangesSettings),
+            typeof(EFCoreDbContextScriptSettings),
+            typeof(EFCoreDbContextOptimizeSettings),
+        };
+        foreach (var t in withoutJson)
+        {
+            var setters = t.GetMethods().Where(m => m.Name == "SetJson").ToList();
+            Assert.Empty(setters);
+        }
+    }
+
+    [Fact]
+    public void Verbs_With_Json_Each_Carry_Their_Own_SetJson()
+    {
+        // Each verb that supports --json declares the setter directly;
+        // it is NOT inherited from the base.
+        var withJson = new[]
+        {
+            typeof(EFCoreMigrationsAddSettings),
+            typeof(EFCoreMigrationsRemoveSettings),
+            typeof(EFCoreMigrationsListSettings),
+            typeof(EFCoreDbContextInfoSettings),
+            typeof(EFCoreDbContextListSettings),
+            typeof(EFCoreDbContextScaffoldSettings),
+        };
+        foreach (var t in withJson)
+        {
+            var setter = t.GetMethod("SetJson");
+            Assert.NotNull(setter);
+            Assert.Equal(t, setter!.DeclaringType);
+        }
+    }
+
+    [Fact]
+    public void DbContextOptimize_NoScaffold_Round_Trips()
+    {
+        var args = EFCore.DbContextOptimize(FakeTool(), s => s.SetNoScaffold()).Arguments;
+        Assert.Contains("--no-scaffold", args);
     }
 
     [Fact]

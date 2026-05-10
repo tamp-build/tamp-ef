@@ -13,9 +13,13 @@
     <Project Path="src/Tamp.EFCore.V9/Tamp.EFCore.V9.csproj" />
     <Project Path="src/Tamp.EFCore.V10/Tamp.EFCore.V10.csproj" />
   </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/SampleEfApp/SampleEfApp.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Tamp.EFCore.V8.Tests/Tamp.EFCore.V8.Tests.csproj" />
     <Project Path="tests/Tamp.EFCore.V9.Tests/Tamp.EFCore.V9.Tests.csproj" />
     <Project Path="tests/Tamp.EFCore.V10.Tests/Tamp.EFCore.V10.Tests.csproj" />
+    <Project Path="tests/Tamp.EFCore.V10.IntegrationTests/Tamp.EFCore.V10.IntegrationTests.csproj" />
   </Folder>
 </Solution>
