@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <RootNamespace>Tamp.EFCore.V8</RootNamespace>
+    <AssemblyName>Tamp.EFCore.V8</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package">
+    <PackageId>Tamp.EFCore.V8</PackageId>
+    <Version>0.0.1-alpha</Version>
+    <Description>Tamp wrapper for the dotnet-ef CLI (EF Core 8.x). Full surface across migrations / database / dbcontext verbs, including cross-project flags (--project, --startup-project, --framework, --configuration, --runtime, --no-build).</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(TampCorePath)" Condition="'$(TampCoreMode)' == 'project'" />
+    <PackageReference Include="Tamp.Core" Condition="'$(TampCoreMode)' == 'package'" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>
