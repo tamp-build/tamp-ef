@@ -277,17 +277,20 @@ public sealed class MigrationFanoutTests
     }
 
     [Fact]
-    public async Task Cancellation_Throws_OperationCanceledException()
+    public async Task Cancellation_Returns_Partial_Result_With_Skipped_Entries()
     {
-        // External cancellation follows the standard .NET async contract — throws rather than
-        // returning a partial result. Callers wanting partial reports should use FailFast mode
-        // (which yields a populated MigrationFanoutResult with Skipped entries).
+        // External cancellation returns the partial result rather than throwing — the SaaS
+        // observability story is "show me what completed and what didn't", and OperationCancelled
+        // would hide that. Targets that hadn't started (or were mid-flight when cancellation
+        // arrived) are marked Skipped.
         var invoker = new ScriptedInvoker(new()) { StepDelay = TimeSpan.FromSeconds(2) };
         var targets = Enumerable.Range(0, 5).Select(i => T($"t{i}")).ToArray();
         var cts = new CancellationTokenSource();
         cts.CancelAfter(TimeSpan.FromMilliseconds(50));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            EFCoreMigrationFanout.RunAsync("bundle.exe", targets, invoker, o => o.SetConcurrency(1), cts.Token));
+        var result = await EFCoreMigrationFanout.RunAsync("bundle.exe", targets, invoker, o => o.SetConcurrency(1), cts.Token);
+        Assert.Equal(5, result.PerTarget.Count);
+        Assert.True(result.SkippedCount > 0, $"Expected at least one Skipped entry; got {result.SkippedCount}.");
+        Assert.True(result.SucceededCount < 5, "Expected cancellation to prevent some targets from succeeding.");
     }
 
     [Fact]

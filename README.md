@@ -262,11 +262,15 @@ strings from config files keyed by environment, you MUST set this
 correctly — otherwise the bundle ignores the `--connection` argument
 in favour of whatever its config resolved.
 
-**8. Cancellation throws.** A cancelled CT will propagate
-`OperationCanceledException` from `RunAsync`, NOT return a partial
-result. Catch and inspect if you need the partial state — or use
-`FailFast` mode (which yields a populated result with `Skipped`
-entries on the cancellation path).
+**8. Cancellation returns the partial result.** A cancelled CT does
+NOT throw `OperationCanceledException`; it returns the
+`MigrationFanoutResult` populated with whatever finished plus
+`Skipped` entries for targets that didn't. This is deliberate — the
+SaaS observability story is "show me what completed and what
+didn't," and `OperationCancelled` would hide that. If you want
+fail-fast behavior, use `FanoutMode.FailFast`; if you want a hard
+exception on cancel, check `result.SkippedCount > 0` and throw
+yourself.
 
 **9. Capture the result for observability.** Serialise
 `MigrationFanoutResult` as JSON for log aggregation. Fields like

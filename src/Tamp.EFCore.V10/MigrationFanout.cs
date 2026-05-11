@@ -286,9 +286,11 @@ public static class EFCoreMigrationFanout
         {
             await Task.WhenAll(tasks).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (failFastCts.IsCancellationRequested && !ct.IsCancellationRequested)
+        catch (OperationCanceledException)
         {
-            // Fail-fast cancellation is expected; per-target results captured the outcomes.
+            // Both flavors of cancellation (caller's ct OR fail-fast) end the fan-out early.
+            // Either way we want the partial result — that's the SaaS observability story.
+            // Targets that never finished get backfilled below as Skipped.
         }
 
         // Backfill any tasks that were cancelled before they recorded a result.
