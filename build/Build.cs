@@ -37,14 +37,20 @@ class Build : TampBuild
         Console.WriteLine($"  Branch:        {Git.Branch ?? "<detached>"}");
         Console.WriteLine($"  Commit:        {Git.Commit[..7]}");
         Console.WriteLine($"  Configuration: {Configuration}");
-        Console.WriteLine($"  Solution:      {Solution.Name} ({Solution.Projects.Count} projects)");
     });
 
     Target Clean => _ => _
-        .TopLevel()
         .Executes(() =>
         {
-            foreach (var d in RootDirectory.GlobDirectories("**/bin", "**/obj")) d.Delete();
+            // Exclude the build script's own bin/obj — we're currently running from there.
+            // Deleting them mid-run would self-evict the Tamp.NetCli.V10 dll the Restore
+            // target needs. The Tamp.Core 1.0.8 GlobDirectories fix surfaced this trap.
+            var buildDir = (RootDirectory / "build").Value;
+            foreach (var d in RootDirectory.GlobDirectories("**/bin", "**/obj"))
+            {
+                if (d.Value.StartsWith(buildDir, StringComparison.Ordinal)) continue;
+                d.Delete();
+            }
             Artifacts.Delete();
         });
 
@@ -52,7 +58,6 @@ class Build : TampBuild
         .Executes(() => DotNet.Restore(s => s.SetProject(Solution.Path)));
 
     Target Compile => _ => _
-        .TopLevel()
         .DependsOn(nameof(Restore))
         .Executes(() => DotNet.Build(s => s
             .SetProject(Solution.Path)
@@ -60,7 +65,6 @@ class Build : TampBuild
             .SetNoRestore(true)));
 
     Target Test => _ => _
-        .TopLevel()
         .DependsOn(nameof(Compile))
         .Description("Unit tests across V8/V9/V10. Integration tests run separately (need dotnet-ef on PATH).")
         .Executes(() => new[]
@@ -92,7 +96,6 @@ class Build : TampBuild
         });
 
     Target Pack => _ => _
-        .TopLevel()
         .DependsOn(nameof(Test))
         .Description("Pack the three EF Core wrapper packages.")
         .Executes(() => new[]
@@ -124,7 +127,6 @@ class Build : TampBuild
         });
 
     Target Push => _ => _
-        .TopLevel()
         .DependsOn(nameof(Pack))
         .Requires(() => NuGetApiKey != null)
         .Executes(() => Artifacts.GlobFiles("*.nupkg")
@@ -135,7 +137,6 @@ class Build : TampBuild
                 .SetSkipDuplicate(true))));
 
     Target Ci => _ => _
-        .TopLevel()
         .DependsOn(nameof(Info), nameof(Clean), nameof(Pack));
 
     Target Default => _ => _.DependsOn(nameof(Compile));
@@ -182,7 +183,6 @@ class Build : TampBuild
         .Executes(() => Tamp.SonarScanner.V10.SonarScanner.End(SonarTool, s => s.SetToken(SonarToken)));
 
     Target Sonar => _ => _
-        .TopLevel()
         .DependsOn(nameof(SonarBegin), nameof(SonarEnd))
         .Description("End-to-end Sonar scan: Begin (before Compile) → Compile → Test → End. Requires SONAR_TOKEN.");
 

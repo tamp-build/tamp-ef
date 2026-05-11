@@ -51,7 +51,7 @@ public sealed class EFCoreTests
 
     [Fact]
     public void DbContextScaffold_Throws_On_Null_Configurer()
-        => Assert.Throws<ArgumentNullException>(() => EFCore.DbContextScaffold(FakeTool(), null!));
+        => Assert.Throws<ArgumentNullException>(() => EFCore.DbContextScaffold(FakeTool(), (Action<EFCoreDbContextScaffoldSettings>)null!));
 
     [Fact]
     public void MigrationsAdd_Throws_On_Null_Tool()
@@ -59,7 +59,7 @@ public sealed class EFCoreTests
 
     [Fact]
     public void MigrationsAdd_Throws_On_Null_Configurer()
-        => Assert.Throws<ArgumentNullException>(() => EFCore.MigrationsAdd(FakeTool(), null!));
+        => Assert.Throws<ArgumentNullException>(() => EFCore.MigrationsAdd(FakeTool(), (Action<EFCoreMigrationsAddSettings>)null!));
 
     [Fact]
     public void MigrationsRemove_Throws_On_Null_Tool()

@@ -99,4 +99,36 @@ public static class EFCore
         configure?.Invoke(settings);
         return settings.ToCommandPlan(tool);
     }
+
+    private static CommandPlan Build<T>(Tool tool, T settings) where T : EFCoreSettingsBase
+    {
+        if (tool is null) throw new ArgumentNullException(nameof(tool));
+        if (settings is null) throw new ArgumentNullException(nameof(settings));
+        return settings.ToCommandPlan(tool);
+    }
+
+    // ---- Object-init overloads (0.2.1+, TAM-161 satellite fanout) ----
+    // Two equivalent authoring styles; both produce identical CommandPlans. Fluent
+    // stays canonical in docs and `tamp init` templates; object-init available for
+    // consumers who prefer the C# initializer shape.
+    //
+    //     EFCore.MigrationsAdd(Ef, new() { Name = "InitialCreate", Project = Solution.Path });
+    //
+    // is equivalent to:
+    //
+    //     EFCore.MigrationsAdd(Ef, s => s.SetName("InitialCreate").SetProject(Solution.Path));
+
+    public static CommandPlan DatabaseUpdate(Tool tool, EFCoreDatabaseUpdateSettings settings) => Build(tool, settings);
+    public static CommandPlan DatabaseDrop(Tool tool, EFCoreDatabaseDropSettings settings) => Build(tool, settings);
+    public static CommandPlan DbContextInfo(Tool tool, EFCoreDbContextInfoSettings settings) => Build(tool, settings);
+    public static CommandPlan DbContextList(Tool tool, EFCoreDbContextListSettings settings) => Build(tool, settings);
+    public static CommandPlan DbContextOptimize(Tool tool, EFCoreDbContextOptimizeSettings settings) => Build(tool, settings);
+    public static CommandPlan DbContextScript(Tool tool, EFCoreDbContextScriptSettings settings) => Build(tool, settings);
+    public static CommandPlan DbContextScaffold(Tool tool, EFCoreDbContextScaffoldSettings settings) => Build(tool, settings);
+    public static CommandPlan MigrationsAdd(Tool tool, EFCoreMigrationsAddSettings settings) => Build(tool, settings);
+    public static CommandPlan MigrationsRemove(Tool tool, EFCoreMigrationsRemoveSettings settings) => Build(tool, settings);
+    public static CommandPlan MigrationsList(Tool tool, EFCoreMigrationsListSettings settings) => Build(tool, settings);
+    public static CommandPlan MigrationsScript(Tool tool, EFCoreMigrationsScriptSettings settings) => Build(tool, settings);
+    public static CommandPlan MigrationsBundle(Tool tool, EFCoreMigrationsBundleSettings settings) => Build(tool, settings);
+    public static CommandPlan MigrationsHasPendingModelChanges(Tool tool, EFCoreMigrationsHasPendingModelChangesSettings settings) => Build(tool, settings);
 }
