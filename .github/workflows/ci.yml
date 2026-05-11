@@ -48,6 +48,15 @@ jobs:
           dotnet --list-sdks
           dotnet --list-runtimes
 
+      # Integration tests in tests/Tamp.EFCore.V10.IntegrationTests/ shell out
+      # to a real `dotnet-ef` to verify the CommandPlan shapes work end-to-end.
+      # Hosted runners don't have it pre-installed.
+      - name: Install dotnet-ef (EF Core 10)
+        shell: bash
+        run: |
+          dotnet tool install -g dotnet-ef --version 10.*
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
       - name: NuGet cache
         uses: actions/cache@v4
         with:

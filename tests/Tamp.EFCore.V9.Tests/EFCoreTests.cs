@@ -91,18 +91,20 @@ public sealed class EFCoreTests
     [InlineData("/path with spaces/dotnet-ef")]
     public void Every_Verb_Uses_Tool_Path_As_Executable(string toolPath)
     {
+        // TAM-84: compare through tool.Executable.Value; Windows rewrites POSIX paths.
         var tool = new Tool(AbsolutePath.Create(toolPath));
-        Assert.Equal(toolPath, EFCore.DatabaseUpdate(tool).Executable);
-        Assert.Equal(toolPath, EFCore.DatabaseDrop(tool).Executable);
-        Assert.Equal(toolPath, EFCore.DbContextInfo(tool).Executable);
-        Assert.Equal(toolPath, EFCore.DbContextList(tool).Executable);
-        Assert.Equal(toolPath, EFCore.DbContextOptimize(tool).Executable);
-        Assert.Equal(toolPath, EFCore.DbContextScript(tool).Executable);
-        Assert.Equal(toolPath, EFCore.MigrationsRemove(tool).Executable);
-        Assert.Equal(toolPath, EFCore.MigrationsList(tool).Executable);
-        Assert.Equal(toolPath, EFCore.MigrationsScript(tool).Executable);
-        Assert.Equal(toolPath, EFCore.MigrationsBundle(tool).Executable);
-        Assert.Equal(toolPath, EFCore.MigrationsHasPendingModelChanges(tool).Executable);
+        var expected = tool.Executable.Value;
+        Assert.Equal(expected, EFCore.DatabaseUpdate(tool).Executable);
+        Assert.Equal(expected, EFCore.DatabaseDrop(tool).Executable);
+        Assert.Equal(expected, EFCore.DbContextInfo(tool).Executable);
+        Assert.Equal(expected, EFCore.DbContextList(tool).Executable);
+        Assert.Equal(expected, EFCore.DbContextOptimize(tool).Executable);
+        Assert.Equal(expected, EFCore.DbContextScript(tool).Executable);
+        Assert.Equal(expected, EFCore.MigrationsRemove(tool).Executable);
+        Assert.Equal(expected, EFCore.MigrationsList(tool).Executable);
+        Assert.Equal(expected, EFCore.MigrationsScript(tool).Executable);
+        Assert.Equal(expected, EFCore.MigrationsBundle(tool).Executable);
+        Assert.Equal(expected, EFCore.MigrationsHasPendingModelChanges(tool).Executable);
     }
 
     // ================================================================
