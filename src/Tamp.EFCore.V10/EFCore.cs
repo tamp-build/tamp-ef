@@ -84,9 +84,23 @@ public static class EFCore
     public static CommandPlan MigrationsScript(Tool tool, Action<EFCoreMigrationsScriptSettings>? configure = null)
         => Build(tool, configure);
 
-    /// <summary><c>dotnet ef migrations bundle</c> — package every migration into a self-contained executable.</summary>
-    public static CommandPlan MigrationsBundle(Tool tool, Action<EFCoreMigrationsBundleSettings>? configure = null)
-        => Build(tool, configure);
+    /// <summary>
+    /// <c>dotnet ef migrations bundle</c> — package every migration into a self-contained executable.
+    /// </summary>
+    /// <remarks>
+    /// Returns a <see cref="MigrationBundlePlan"/> which is implicitly usable as a
+    /// <see cref="CommandPlan"/> (so a target body can return it directly), and additionally
+    /// exposes <c>ForEachTenantAsync(...)</c> for the per-tenant SaaS migration loop pattern
+    /// — build once, invoke against N tenants with bounded concurrency, configurable
+    /// failure mode, retries, and per-target timeouts.
+    /// </remarks>
+    public static MigrationBundlePlan MigrationsBundle(Tool tool, Action<EFCoreMigrationsBundleSettings>? configure = null)
+    {
+        if (tool is null) throw new ArgumentNullException(nameof(tool));
+        var settings = new EFCoreMigrationsBundleSettings();
+        configure?.Invoke(settings);
+        return new MigrationBundlePlan(tool, settings);
+    }
 
     /// <summary><c>dotnet ef migrations has-pending-model-changes</c> — exit non-zero when there are uncaptured model changes (EF 8+).</summary>
     public static CommandPlan MigrationsHasPendingModelChanges(Tool tool, Action<EFCoreMigrationsHasPendingModelChangesSettings>? configure = null)
@@ -129,6 +143,11 @@ public static class EFCore
     public static CommandPlan MigrationsRemove(Tool tool, EFCoreMigrationsRemoveSettings settings) => Build(tool, settings);
     public static CommandPlan MigrationsList(Tool tool, EFCoreMigrationsListSettings settings) => Build(tool, settings);
     public static CommandPlan MigrationsScript(Tool tool, EFCoreMigrationsScriptSettings settings) => Build(tool, settings);
-    public static CommandPlan MigrationsBundle(Tool tool, EFCoreMigrationsBundleSettings settings) => Build(tool, settings);
+    public static MigrationBundlePlan MigrationsBundle(Tool tool, EFCoreMigrationsBundleSettings settings)
+    {
+        if (tool is null) throw new ArgumentNullException(nameof(tool));
+        if (settings is null) throw new ArgumentNullException(nameof(settings));
+        return new MigrationBundlePlan(tool, settings);
+    }
     public static CommandPlan MigrationsHasPendingModelChanges(Tool tool, EFCoreMigrationsHasPendingModelChangesSettings settings) => Build(tool, settings);
 }

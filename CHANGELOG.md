@@ -6,6 +6,46 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-05-12
+
+### Changed (breaking, V10 only)
+
+- **`EFCore.MigrationsBundle(...)` now returns `MigrationBundlePlan` instead of `CommandPlan`** (TAM-165). The new type is implicitly convertible to `CommandPlan`, so existing target bodies that return `EFCore.MigrationsBundle(...)` directly keep compiling. Tests that accessed `.Arguments` / `.Executable` on the return value need to go through `.Plan.Arguments` / `.Plan.Executable`.
+
+### Added (V10 only)
+
+- **Fluent per-tenant SaaS migration loop** (TAM-104 / TAM-165). Build the bundle and fan it out across N tenants in one call. strata-scott's design lands verbatim modulo the framework's `Tool`-as-first-arg convention:
+
+  ```csharp
+  Target ApplyTenantMigrations => _ => _.Executes(async () =>
+  {
+      // How you build the tenant catalog is project-specific — Tamp doesn't opine.
+      IReadOnlyList<MigrationTarget> tenants = await MyTenantCatalog.LoadAsync();
+
+      await EFCore.MigrationsBundle(Ef, s => s.SetProject(Solution.Path).SetSelfContained())
+          .ForEachTenantAsync(
+              tenants,
+              parallelism: 4,
+              onFailure: TenantFailureMode.LogAndContinue,
+              timeoutPerTenant: TimeSpan.FromMinutes(5));
+  });
+  ```
+
+- **`TenantFailureMode`** enum, distinct from the engine-level `FanoutMode`:
+  - `FailFast` — stop on first failure, skip the rest, throw aggregate at end
+  - `LogAndContinue` (default) — run every tenant, log each failure, throw aggregate at end so CI sees a non-zero exit
+  - `ReportOnly` — run every tenant, never throw — caller inspects `MigrationFanoutResult` and decides
+
+- **`MigrationTarget.FromConnectionString(connStr, name?, environment?, tier?)`** convenience static. Saves the three-line `new MigrationTarget(..., new Secret(...), ...)` wrap when the adopter already has a plain connection string in hand.
+
+- **`MigrationBundlePlan.BuildAsync(ct?)`** — explicit "build the bundle, return the path" entry point for callers who want to produce the bundle as a deployment artifact separately from running it. The fluent `ForEachTenantAsync` calls this internally.
+
+### Notes
+
+- V8 and V9 do not have the fan-out feature yet — `MigrationsBundle` on those still returns `CommandPlan`. Strata's stack is on .NET 10, so the V10 surface is the focus. Backporting to V8/V9 will land in a future wave if any adopter asks.
+- Conceded to strata-scott's design 2026-05-12 after he flagged the prior split `EFCoreMigrationFanout.RunAsync(bundlePath, ...)` API as too low-level for the common case. The split engine API stays public for power users who want bundle-once-fanout-many.
+- `TenantCatalog.FromMasterDb(...)` deliberately does NOT exist. How the adopter derives their tenant list (master-DB query, KV lookup, hard-coded list) is project-specific — Tamp consumes an `IReadOnlyList<MigrationTarget>` and does not opine on its provenance.
+
 ## [0.2.1] — 2026-05-11
 
 ### Added

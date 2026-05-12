@@ -13,7 +13,34 @@ public sealed record MigrationTarget(
     string Name,
     Secret ConnectionString,
     string? Environment = null,
-    string? Tier = null);
+    string? Tier = null)
+{
+    /// <summary>
+    /// Convenience for the explicit-list case: the adopter already has a plain connection
+    /// string and just needs it wrapped as a <see cref="MigrationTarget"/>. How you derive
+    /// the tenant catalog (master-DB query, KV lookup, hard-coded list) is project-specific —
+    /// Tamp does not opine. This helper just saves the three-line wrapper at the call site.
+    /// </summary>
+    /// <param name="connectionString">Plain connection string. Will be wrapped in a <see cref="Secret"/>.</param>
+    /// <param name="name">Tenant name for logs / reports. Defaults to a sequential placeholder.</param>
+    /// <param name="environment">Optional <c>ASPNETCORE_ENVIRONMENT</c> override for the bundle invocation.</param>
+    /// <param name="tier">Optional tier label for grouped reporting.</param>
+    public static MigrationTarget FromConnectionString(
+        string connectionString,
+        string? name = null,
+        string? environment = null,
+        string? tier = null)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new ArgumentException("Connection string must not be empty.", nameof(connectionString));
+        var resolvedName = name ?? $"tenant-{Guid.NewGuid().ToString("N")[..8]}";
+        return new MigrationTarget(
+            resolvedName,
+            new Secret($"conn-{resolvedName}", connectionString),
+            environment,
+            tier);
+    }
+}
 
 /// <summary>Outcome of one target in a migration fan-out.</summary>
 public enum MigrationOutcome

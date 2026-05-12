@@ -105,7 +105,7 @@ public sealed class EFCoreTests
         Assert.Equal(expected, EFCore.MigrationsRemove(tool).Executable);
         Assert.Equal(expected, EFCore.MigrationsList(tool).Executable);
         Assert.Equal(expected, EFCore.MigrationsScript(tool).Executable);
-        Assert.Equal(expected, EFCore.MigrationsBundle(tool).Executable);
+        Assert.Equal(expected, EFCore.MigrationsBundle(tool).Plan.Executable);
         Assert.Equal(expected, EFCore.MigrationsHasPendingModelChanges(tool).Executable);
     }
 
@@ -476,7 +476,7 @@ public sealed class EFCoreTests
             .SetTargetRuntime("linux-x64")
             .SetSelfContained()
             .SetForce()
-            .SetContext("Ctx")).Arguments;
+            .SetContext("Ctx")).Plan.Arguments;
         Assert.Equal(new[] { "migrations", "bundle" }, args.Take(2));
         Assert.Equal("migrate", args[IndexOf(args, "--output") + 1]);
         Assert.Equal("linux-x64", args[IndexOf(args, "--target-runtime") + 1]);
