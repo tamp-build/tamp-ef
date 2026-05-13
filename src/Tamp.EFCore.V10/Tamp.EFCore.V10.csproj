@@ -10,7 +10,12 @@
     <PackageId>Tamp.EFCore.V10</PackageId>
     <Description>Tamp wrapper for the dotnet-ef CLI (EF Core 10.x). Full surface across migrations / database / dbcontext verbs, including cross-project flags (--project, --startup-project, --framework, --configuration, --runtime, --no-build).</Description>
     <IsPackable>true</IsPackable>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="$(TampCorePath)" Condition="'$(TampCoreMode)' == 'project'" />
