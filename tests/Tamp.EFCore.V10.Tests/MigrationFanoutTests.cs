@@ -210,15 +210,12 @@ public sealed class MigrationFanoutTests
     }
 
     [Fact]
-    public async Task FailFast_Records_Failure_And_Skips_Some_Remaining()
+    public async Task FailFast_At_Concurrency_1_Skips_Every_Remaining_Target_In_Declaration_Order()
     {
-        // The engine's concurrency gate (SemaphoreSlim) plus Task.Run dispatch does NOT
-        // strictly preserve declaration order: on a multi-core runner, tasks may grab the
-        // gate in scheduling order rather than iteration order. So "first target fails →
-        // ALL remaining are skipped" is best-effort, not strict. We assert the WEAK
-        // contract: at least one target failed and the cumulative success count is less
-        // than the total. Strict serialization under concurrency=1 is a known engine
-        // limitation tracked separately (filed post-v0.3.0).
+        // TAM-168: at Concurrency=1 the engine now runs targets serially in declaration
+        // order (not via Task.Run + SemaphoreSlim, which had nondeterministic ordering).
+        // Strict assertion: first target fails → ALL subsequent targets are Skipped, in
+        // exactly the order they were declared.
         var script = new Dictionary<string, Queue<BundleInvocationResult>>
         {
             ["bad"] = new(new[] { new BundleInvocationResult(1, TimeSpan.FromMilliseconds(5), "", "boom", false) })
@@ -229,8 +226,69 @@ public sealed class MigrationFanoutTests
         var result = await EFCoreMigrationFanout.RunAsync("bundle.exe", targets, invoker,
             o => o.SetMode(FanoutMode.FailFast).SetConcurrency(1), CancellationToken.None);
 
-        Assert.True(result.AnyFailures, "Expected at least one failure.");
-        Assert.True(result.SucceededCount < targets.Length, $"Expected fail-fast to prevent some successes; got {result.SucceededCount}/{targets.Length}.");
+        // Strict per-target outcomes in declaration order.
+        Assert.Equal(MigrationOutcome.Failed, result.PerTarget[0].Outcome);
+        for (var i = 1; i < targets.Length; i++)
+        {
+            Assert.Equal(MigrationOutcome.Skipped, result.PerTarget[i].Outcome);
+            Assert.Equal(targets[i].Name, result.PerTarget[i].Target.Name);
+        }
+        Assert.Equal(1, result.FailedCount);
+        Assert.Equal(0, result.SucceededCount);
+        Assert.Equal(targets.Length - 1, result.SkippedCount);
+
+        // The invoker must have been called exactly once — the failing target.
+        Assert.Single(invoker.Calls);
+        Assert.StartsWith("bad|", invoker.Calls.First());
+    }
+
+    [Fact]
+    public async Task Concurrency_1_Preserves_Strict_Declaration_Order_When_All_Succeed()
+    {
+        // The invoker records the order it was called. At Concurrency=1 it must match
+        // exactly the declaration order of the targets, no matter how the runner
+        // schedules work.
+        var invoker = new ScriptedInvoker(new()) { StepDelay = TimeSpan.FromMilliseconds(5) };
+        var targets = Enumerable.Range(1, 10).Select(i => T($"tenant-{i:D2}")).ToArray();
+
+        var result = await EFCoreMigrationFanout.RunAsync("bundle.exe", targets, invoker,
+            o => o.SetConcurrency(1), CancellationToken.None);
+
+        Assert.Equal(10, result.SucceededCount);
+        // ScriptedInvoker.Calls records "name|secret=...|verbose=...|env=..." per call;
+        // extract just the name prefix to compare order.
+        var calledNames = invoker.Calls.Select(s => s.Split('|', 2)[0]).ToList();
+        Assert.Equal(targets.Select(t => t.Name).ToList(), calledNames);
+        // PerTarget is index-aligned with the input array (always — strict at concurrency=1).
+        for (var i = 0; i < targets.Length; i++)
+            Assert.Equal(targets[i].Name, result.PerTarget[i].Target.Name);
+    }
+
+    [Fact]
+    public async Task Concurrency_1_FailFast_Failure_In_Middle_Still_Skips_Strictly_From_That_Point()
+    {
+        // Failing target is in the middle of the list. Everything before should succeed,
+        // everything after should be Skipped — strict ordering at concurrency=1.
+        var script = new Dictionary<string, Queue<BundleInvocationResult>>
+        {
+            ["mid-bad"] = new(new[] { new BundleInvocationResult(1, TimeSpan.FromMilliseconds(5), "", "boom", false) })
+        };
+        var invoker = new ScriptedInvoker(script) { StepDelay = TimeSpan.FromMilliseconds(5) };
+        var targets = new[] { T("a"), T("b"), T("c"), T("mid-bad"), T("e"), T("f") };
+
+        var result = await EFCoreMigrationFanout.RunAsync("bundle.exe", targets, invoker,
+            o => o.SetMode(FanoutMode.FailFast).SetConcurrency(1), CancellationToken.None);
+
+        Assert.Equal(MigrationOutcome.Succeeded, result.PerTarget[0].Outcome);
+        Assert.Equal(MigrationOutcome.Succeeded, result.PerTarget[1].Outcome);
+        Assert.Equal(MigrationOutcome.Succeeded, result.PerTarget[2].Outcome);
+        Assert.Equal(MigrationOutcome.Failed,    result.PerTarget[3].Outcome);
+        Assert.Equal(MigrationOutcome.Skipped,   result.PerTarget[4].Outcome);
+        Assert.Equal(MigrationOutcome.Skipped,   result.PerTarget[5].Outcome);
+
+        // Invoker calls: a, b, c, mid-bad (4 total). e and f never ran.
+        var calledNames = invoker.Calls.Select(s => s.Split('|', 2)[0]).ToList();
+        Assert.Equal(new[] { "a", "b", "c", "mid-bad" }, calledNames);
     }
 
     [Fact]

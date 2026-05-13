@@ -6,6 +6,39 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [0.4.0] — pending — strict serial ordering at concurrency=1 (TAM-168)
+
+### Changed (V10 only)
+
+- **`EFCoreMigrationFanout.RunAsync` now uses a sequential `foreach` loop when
+  `Concurrency == 1`**, replacing the `Task.Run + SemaphoreSlim` (permit=1)
+  dispatch that had no thread-pool ordering guarantee. Targets at
+  `Concurrency == 1` now execute in strict declaration order, one at a time.
+  At `Concurrency > 1` the existing parallel path is unchanged.
+
+  Behavior contract — **strict at `Concurrency == 1`**:
+  - Target `i+1` starts only after target `i` completes.
+  - Under `FanoutMode.FailFast`: first failure → all subsequent targets are
+    `Skipped`, in declaration order, with zero further bundle invocations.
+  - `result.PerTarget` is index-aligned with the input target list (and was
+    already; this just makes it more meaningful when paired with strict
+    ordering).
+
+  Tests previously asserted only "weak" contracts ("at least one failed" /
+  "some were skipped") to mask the engine's non-determinism — see TAM-168.
+  Those assertions are now strict (per-target outcome + invoker call order
+  asserted explicitly).
+
+### Why
+
+Driven by the v0.3.0 release, which had to loosen test assertions to ship
+because of nondeterministic ordering at the fan-out level even at
+`Concurrency == 1`. Strata flagged it as a real adopter footgun: an
+expectation of "stop at first failure, leave rest untouched" is the
+common-sense semantics of `FailFast` and `Concurrency = 1`, and the engine
+not honoring it was friction. The refactor is internal — public API surface
+unchanged.
+
 ## [0.3.1] — 2026-05-13
 
 ### Added (V10 only)

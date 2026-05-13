@@ -289,57 +289,107 @@ public static class EFCoreMigrationFanout
         var results = new MigrationTargetResult?[targets.Count];
 
         using var failFastCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var failFastTripped = 0;
 
-        using var gate = new SemaphoreSlim(options.Concurrency);
-        var tasks = new List<Task>(targets.Count);
-
-        for (var i = 0; i < targets.Count; i++)
+        if (options.Concurrency == 1)
         {
-            var index = i;
-            var target = targets[index];
-            tasks.Add(Task.Run(async () =>
+            // ── Serial path (concurrency=1) ───────────────────────────────────
+            // Targets execute in strict declaration order, one at a time, with no
+            // thread-pool dispatch indeterminism. Tests can therefore assert STRICT
+            // contracts: "target N+1 starts only after target N completes", and
+            // "first failure under FailFast → all subsequent results are Skipped".
+            //
+            // TAM-168: the previous engine path (Task.Run + SemaphoreSlim with
+            // permit=1) appeared serial but was actually order-non-deterministic
+            // — the thread pool could dispatch queued tasks in any order even when
+            // only one held the semaphore at a time. v0.3.0 had to ship with the
+            // test assertions loosened to "weak ordering" to mask flakes. This
+            // branch makes the strict contract real.
+            for (var i = 0; i < targets.Count; i++)
             {
+                var target = targets[i];
+
                 if (failFastCts.IsCancellationRequested)
                 {
-                    results[index] = new MigrationTargetResult(target, MigrationOutcome.Skipped, ExitCode: 0, Duration: TimeSpan.Zero, Attempts: 0, StdOut: "", StdErr: "", FailureReason: "Skipped after fail-fast tripped.");
-                    return;
+                    results[i] = new MigrationTargetResult(target, MigrationOutcome.Skipped, 0, TimeSpan.Zero, 0, "", "", "Skipped after fail-fast tripped.");
+                    continue;
                 }
 
-                await gate.WaitAsync(failFastCts.Token).ConfigureAwait(false);
                 try
                 {
-                    if (failFastCts.IsCancellationRequested)
-                    {
-                        results[index] = new MigrationTargetResult(target, MigrationOutcome.Skipped, 0, TimeSpan.Zero, 0, "", "", "Skipped after fail-fast tripped.");
-                        return;
-                    }
                     var result = await RunOneAsync(invoker, bundlePath, target, options, failFastCts.Token).ConfigureAwait(false);
-                    results[index] = result;
+                    results[i] = result;
                     options.ProgressWriter?.WriteLine($"  [{target.Name}] {result.Outcome} ({result.Duration.TotalSeconds:0.0}s, exit={result.ExitCode}, attempts={result.Attempts})");
 
-                    if (!result.IsSuccess && options.Mode == FanoutMode.FailFast
-                        && Interlocked.Exchange(ref failFastTripped, 1) == 0)
+                    if (!result.IsSuccess && options.Mode == FanoutMode.FailFast)
                     {
                         failFastCts.Cancel();
                     }
                 }
-                finally
+                catch (OperationCanceledException)
                 {
-                    gate.Release();
+                    results[i] = new MigrationTargetResult(target, MigrationOutcome.Skipped, 0, TimeSpan.Zero, 0, "", "", "Cancelled.");
                 }
-            }, failFastCts.Token));
+            }
         }
+        else
+        {
+            // ── Parallel path (concurrency > 1) ───────────────────────────────
+            // Multiple targets in flight concurrently. Declaration order is not
+            // preserved (deliberately — there are N permits and the OS scheduler
+            // picks the dispatch order). Tests at concurrency > 1 should assert
+            // weak contracts only.
+            var failFastTripped = 0;
 
-        try
-        {
-            await Task.WhenAll(tasks).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // Both flavors of cancellation (caller's ct OR fail-fast) end the fan-out early.
-            // Either way we want the partial result — that's the SaaS observability story.
-            // Targets that never finished get backfilled below as Skipped.
+            using var gate = new SemaphoreSlim(options.Concurrency);
+            var tasks = new List<Task>(targets.Count);
+
+            for (var i = 0; i < targets.Count; i++)
+            {
+                var index = i;
+                var target = targets[index];
+                tasks.Add(Task.Run(async () =>
+                {
+                    if (failFastCts.IsCancellationRequested)
+                    {
+                        results[index] = new MigrationTargetResult(target, MigrationOutcome.Skipped, ExitCode: 0, Duration: TimeSpan.Zero, Attempts: 0, StdOut: "", StdErr: "", FailureReason: "Skipped after fail-fast tripped.");
+                        return;
+                    }
+
+                    await gate.WaitAsync(failFastCts.Token).ConfigureAwait(false);
+                    try
+                    {
+                        if (failFastCts.IsCancellationRequested)
+                        {
+                            results[index] = new MigrationTargetResult(target, MigrationOutcome.Skipped, 0, TimeSpan.Zero, 0, "", "", "Skipped after fail-fast tripped.");
+                            return;
+                        }
+                        var result = await RunOneAsync(invoker, bundlePath, target, options, failFastCts.Token).ConfigureAwait(false);
+                        results[index] = result;
+                        options.ProgressWriter?.WriteLine($"  [{target.Name}] {result.Outcome} ({result.Duration.TotalSeconds:0.0}s, exit={result.ExitCode}, attempts={result.Attempts})");
+
+                        if (!result.IsSuccess && options.Mode == FanoutMode.FailFast
+                            && Interlocked.Exchange(ref failFastTripped, 1) == 0)
+                        {
+                            failFastCts.Cancel();
+                        }
+                    }
+                    finally
+                    {
+                        gate.Release();
+                    }
+                }, failFastCts.Token));
+            }
+
+            try
+            {
+                await Task.WhenAll(tasks).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Both flavors of cancellation (caller's ct OR fail-fast) end the fan-out early.
+                // Either way we want the partial result — that's the SaaS observability story.
+                // Targets that never finished get backfilled below as Skipped.
+            }
         }
 
         // Backfill any tasks that were cancelled before they recorded a result.
