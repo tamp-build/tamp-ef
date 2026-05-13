@@ -6,6 +6,24 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-05-13
+
+### Added (V10 only)
+
+- **`MigrationTarget.FromConnectionString(Secret connectionString, string? name, string? environment, string? tier)`** overload (TAM-183). The existing string-typed overload still works; this Secret-typed sibling preserves redaction through the build pipeline for adopters carrying tenant connection strings as `Secret`. When no explicit `name` is supplied, the Secret's existing `Name` carries through to the resulting `MigrationTarget.Name` (handy when adopters key their secrets like `TENANT_3__CONNECTION` and want the same identifier in fan-out reports).
+
+  ```csharp
+  IReadOnlyList<MigrationTarget> tenants = settings
+      .Where(kvp => kvp.Key.StartsWith("TENANT_"))
+      .Select(kvp => MigrationTarget.FromConnectionString(
+          new Secret(kvp.Key, kvp.Value)))
+      .ToList();
+  ```
+
+### Notes
+
+- Driven by strata-scott's 2026-05-13 universal-friction report after wiring `ApplyTenantMigrations` in Strata's `build/Build.cs`. Multi-tenant adopters who carry connection strings as `Secret` (the canonical shape for credentialed material) previously had no public path to convert into a `MigrationTarget` without round-tripping through a plain string and losing the redaction wrap.
+
 ## [0.3.0] — 2026-05-12
 
 ### Changed (breaking, V10 only)

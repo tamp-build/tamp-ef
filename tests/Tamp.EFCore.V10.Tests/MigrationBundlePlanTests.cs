@@ -59,6 +59,47 @@ public sealed class MigrationBundlePlanTests
         Assert.Throws<ArgumentException>(() => MigrationTarget.FromConnectionString(value!));
     }
 
+    // ---- FromConnectionString(Secret) overload — TAM-183 ----
+
+    [Fact]
+    public void FromConnectionString_Secret_Uses_Secret_Name_When_Name_Omitted()
+    {
+        var secret = new Secret("TENANT_3__CONNECTION", "Host=db;Database=t3");
+        var target = MigrationTarget.FromConnectionString(secret);
+
+        Assert.Equal("TENANT_3__CONNECTION", target.Name);
+        Assert.Same(secret, target.ConnectionString);
+    }
+
+    [Fact]
+    public void FromConnectionString_Secret_With_Explicit_Name_Wins()
+    {
+        var secret = new Secret("TENANT_3__CONNECTION", "Host=db;Database=t3");
+        var target = MigrationTarget.FromConnectionString(secret, name: "tenant-acme");
+
+        Assert.Equal("tenant-acme", target.Name);
+        Assert.Same(secret, target.ConnectionString);
+    }
+
+    [Fact]
+    public void FromConnectionString_Secret_Preserves_Environment_And_Tier()
+    {
+        var target = MigrationTarget.FromConnectionString(
+            new Secret("conn", "Host=db"),
+            environment: "Production",
+            tier: "premium");
+
+        Assert.Equal("Production", target.Environment);
+        Assert.Equal("premium", target.Tier);
+    }
+
+    [Fact]
+    public void FromConnectionString_Secret_Rejects_Null()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            MigrationTarget.FromConnectionString((Secret)null!));
+    }
+
     // ---- MigrationBundlePlan shape ----
 
     [Fact]

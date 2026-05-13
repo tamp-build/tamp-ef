@@ -40,6 +40,28 @@ public sealed record MigrationTarget(
             environment,
             tier);
     }
+
+    /// <summary>
+    /// Secret-typed overload of <see cref="FromConnectionString(string, string?, string?, string?)"/>.
+    /// Adopters carrying tenant connection strings as <see cref="Secret"/> (the canonical shape for
+    /// credentialed material) use this overload to preserve redaction through the build pipeline.
+    /// The supplied Secret's <see cref="Secret.Name"/> is preserved if no <paramref name="name"/>
+    /// is given (it's typically already meaningful — e.g. "TENANT_3__CONNECTION").
+    /// </summary>
+    /// <param name="connectionString">Connection string already wrapped as a <see cref="Secret"/>.</param>
+    /// <param name="name">Tenant name for logs / reports. Defaults to the Secret's Name.</param>
+    /// <param name="environment">Optional <c>ASPNETCORE_ENVIRONMENT</c> override.</param>
+    /// <param name="tier">Optional tier label.</param>
+    public static MigrationTarget FromConnectionString(
+        Secret connectionString,
+        string? name = null,
+        string? environment = null,
+        string? tier = null)
+    {
+        if (connectionString is null) throw new ArgumentNullException(nameof(connectionString));
+        var resolvedName = name ?? connectionString.Name;
+        return new MigrationTarget(resolvedName, connectionString, environment, tier);
+    }
 }
 
 /// <summary>Outcome of one target in a migration fan-out.</summary>
