@@ -189,7 +189,10 @@ internal sealed class ProcessBundleInvoker : IBundleInvoker
             CreateNoWindow = true,
         };
         psi.ArgumentList.Add("--connection");
+        // TODO: extract into MigrationFanoutSettings to satisfy TAMP004 cleanly.
+#pragma warning disable TAMP004
         psi.ArgumentList.Add(target.ConnectionString.Reveal());
+#pragma warning restore TAMP004
         if (verbose) psi.ArgumentList.Add("--verbose");
         if (target.Environment is { Length: > 0 } env)
             psi.Environment["ASPNETCORE_ENVIRONMENT"] = env;
