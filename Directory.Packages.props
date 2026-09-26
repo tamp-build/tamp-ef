@@ -31,4 +31,8 @@
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.7" />
   </ItemGroup>
 
+  <ItemGroup Label="Transitive security pins — SQLitePCLRaw.lib.e_sqlite3 pulled transitively via EF Core SQLite; 2.1.11 carries GHSA-2m69-gcr7-jv3q (NU1903). Pin the native lib up to 2.1.13 to clear it.">
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
+  </ItemGroup>
+
 </Project>
