@@ -132,7 +132,7 @@ public sealed class MigrationFanoutException : Exception
 }
 
 /// <summary>
-/// Options for <see cref="EFCoreMigrationFanout.RunAsync"/>. SaaS-tuned defaults: serial execution (concurrency 1),
+/// Options for <c>EFCoreMigrationFanout.RunAsync</c>. SaaS-tuned defaults: serial execution (concurrency 1),
 /// 5-minute per-target timeout, fail-fast off so you get a full report instead of stopping at the first bad tenant.
 /// </summary>
 public sealed class MigrationFanoutOptions
@@ -237,7 +237,7 @@ internal sealed class ProcessBundleInvoker : IBundleInvoker
 /// </summary>
 /// <remarks>
 /// <para>
-/// The bundle is produced by <see cref="EFCore.MigrationsBundle"/> and is a self-contained executable. It accepts
+/// The bundle is produced by <c>EFCore.MigrationsBundle</c> and is a self-contained executable. It accepts
 /// <c>--connection &lt;connstr&gt;</c> and (optionally) <c>--verbose</c>; it reads <c>ASPNETCORE_ENVIRONMENT</c> from
 /// the environment. The fan-out invokes it once per target with that target's connection string.
 /// </para>
