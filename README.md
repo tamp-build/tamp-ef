@@ -6,9 +6,17 @@ Three sibling packages, each pinned to an EF Core major:
 
 | Package | EF Core | .NET runtime | Status |
 |---|---|---|---|
-| [`Tamp.EFCore.V8`](src/Tamp.EFCore.V8) | 8.x (LTS through Nov 2026) | net8.0 / net9.0 / net10.0 | preview |
-| [`Tamp.EFCore.V9`](src/Tamp.EFCore.V9) | 9.x (STS through May 2026) | net8.0 / net9.0 / net10.0 | preview |
-| [`Tamp.EFCore.V10`](src/Tamp.EFCore.V10) | 10.x (LTS through Nov 2028) | net8.0 / net9.0 / net10.0 | preview |
+| [`Tamp.EFCore.V8`](src/Tamp.EFCore.V8) | 8.x (LTS **ended** Nov 2026) | net10.0 / net11.0 | preview |
+| [`Tamp.EFCore.V9`](src/Tamp.EFCore.V9) | 9.x (STS **ended** May 2026) | net10.0 / net11.0 | preview |
+| [`Tamp.EFCore.V10`](src/Tamp.EFCore.V10) | 10.x (LTS through Nov 2028) | net10.0 / net11.0 | preview |
+
+The `.NET runtime` column is what the **wrapper package** targets, not what
+the EF Core major supports. `V8` and `V9` were retargeted to `net10.0;net11.0`
+rather than retired: the `V` suffix pins the *CLI surface* per ADR 0002, and a
+build script on a current runtime can still legitimately need to drive
+`dotnet ef` 8 against an existing EF Core 8 model. Their own EF Core support
+windows have closed, which is a fact about the tool being driven, not about
+this wrapper.
 
 Pick the package that matches the EF Core major you're driving — not the
 runtime your build script targets. The CLI surface (and its flags) is what
